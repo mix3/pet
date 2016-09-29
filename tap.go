@@ -257,6 +257,7 @@ func (p *Parser) parseTestLine(ok bool, line string, indent string) (*Testline, 
 		}
 
 		text := p.scanner.Text()
+		orig := text
 
 		// ignore indent
 		if !strings.HasPrefix(text, indent) {
@@ -270,7 +271,7 @@ func (p *Parser) parseTestLine(ok bool, line string, indent string) (*Testline, 
 		if len(text) == 1 || text[0] != '#' {
 			break
 		}
-		diagnostics = append(diagnostics, text)
+		diagnostics = append(diagnostics, orig+"\n")
 	}
 
 	return &Testline{
@@ -353,4 +354,20 @@ func (t *Testline) String() string {
 	}
 
 	return strings.Join(str, "")
+}
+
+func walkDiagnostic(t *Testline) []string {
+	ret := []string{}
+	for _, line := range t.SubTests {
+		if line.Ok {
+			continue
+		}
+		ret = append(ret, walkDiagnostic(line)...)
+		ret = append(ret, line.Diagnostic)
+	}
+	return ret
+}
+
+func (t *Testline) WalkDiagnostic() string {
+	return strings.Join(append(walkDiagnostic(t), t.Diagnostic), "")
 }
