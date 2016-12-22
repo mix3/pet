@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package pet;
+
+import "google/protobuf/duration.proto";
+
+message Testline {
+	enum Directive {
+		NONE = 0;
+		TODO = 1;
+		SKIP = 2;
+	}
+
+	bool                      ok          = 1;
+	int32                     num         = 2;
+	string                    description = 3;
+	Directive                 directive   = 4;
+	string                    explanation = 5;
+	string                    diagnostic  = 6;
+	google.protobuf.Duration  time        = 7;
+	bytes                     yaml        = 8;
+	repeated Testline         sub_tests   = 9;
+}
+
+message Testsuite {
+	bool                     ok      = 1;
+	repeated Testline        tests   = 2;
+	int32                    plan    = 3;
+	int32                    version = 4;
+	google.protobuf.Duration time    = 5;
+}

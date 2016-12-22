@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/golang/protobuf/ptypes"
 )
 
 var ErrUnsupportedVersion = errors.New("tap: unsupported version")
@@ -18,49 +20,6 @@ var DescriptionRE = regexp.MustCompile(`(?m)Failed test '([^']+)'`)
 const (
 	DefaultTAPVersion = 12
 )
-
-// A TAP-Directive (Todo/Skip)
-type Directive int
-
-const (
-	None Directive = iota // No directive given
-	Todo                  // Testpoint is a TODO
-	Skip                  // Testpoint was skipped
-)
-
-func (d Directive) String() string {
-	switch d {
-	case None:
-		return "None"
-	case Todo:
-		return "TODO"
-	case Skip:
-		return "SKIP"
-	}
-	return ""
-}
-
-// A single TAP-Testline
-type Testline struct {
-	Ok          bool          // Whether the Testpoint executed ok
-	Num         int           // The number of the test
-	Description string        // A short description
-	Directive   Directive     // Whether the test was skipped or is a todo
-	Explanation string        // A short explanation why the test was skipped/is a todo
-	Diagnostic  string        // A more detailed diagnostic message about the failed test
-	Time        time.Duration // Time it took to test
-	Yaml        []byte        // The inline Yaml-document, if given
-	SubTests    []*Testline   // Sub-Tests
-}
-
-// The outcome of a Testsuite
-type Testsuite struct {
-	Ok      bool          // Whether the Testsuite as a whole succeded
-	Tests   []*Testline   // Description of all Testlines
-	Plan    int           // Number of tests intended to run (-1 means no plan)
-	Version int           // version number of TAP
-	Time    time.Duration // Time it took to test
-}
 
 // Parses TAP
 type Parser struct {
@@ -121,7 +80,7 @@ func (p *Parser) next(indent string) (*Testline, error) {
 			if version != 13 {
 				return nil, ErrUnsupportedVersion
 			}
-			p.suite.Version = version
+			p.suite.Version = int32(version)
 			if !p.scanner.Scan() {
 				return nil, io.EOF
 			}
@@ -139,7 +98,7 @@ func (p *Parser) next(indent string) (*Testline, error) {
 			if err != nil {
 				return nil, err
 			}
-			p.suite.Plan = plan
+			p.suite.Plan = int32(plan)
 			if !p.scanner.Scan() {
 				return nil, io.EOF
 			}
@@ -183,14 +142,14 @@ func (p *Parser) Suite() (*Testsuite, error) {
 		}
 	}
 
-	p.suite.Time = p.lastExecTime.Sub(p.startAt)
+	p.suite.Time = ptypes.DurationProto(p.lastExecTime.Sub(p.startAt))
 	for _, t := range p.suite.Tests {
 		if !t.Ok {
 			p.suite.Ok = false
 		}
 	}
 
-	if p.suite.Plan < 0 || len(p.suite.Tests) != p.suite.Plan {
+	if p.suite.Plan < 0 || int32(len(p.suite.Tests)) != p.suite.Plan {
 		p.suite.Ok = false
 		return &p.suite, nil
 	}
@@ -233,14 +192,14 @@ func (p *Parser) parseTestLine(ok bool, line string, indent string) (*Testline, 
 		description = strings.TrimSpace(line[index:])
 	}
 
-	directive := None
+	directive := Testline_NONE
 	explanation := directiveStr
 	if len(directiveStr) > 4 && strings.EqualFold(directiveStr[0:4], "TODO") {
-		directive = Todo
+		directive = Testline_TODO
 		explanation = strings.TrimSpace(directiveStr[4:])
 	}
 	if len(directiveStr) > 4 && strings.EqualFold(directiveStr[0:4], "SKIP") {
-		directive = Skip
+		directive = Testline_SKIP
 		explanation = strings.TrimSpace(directiveStr[4:])
 	}
 
@@ -276,12 +235,12 @@ func (p *Parser) parseTestLine(ok bool, line string, indent string) (*Testline, 
 
 	return &Testline{
 		Ok:          ok,
-		Num:         num,
+		Num:         int32(num),
 		Description: description,
 		Directive:   directive,
 		Explanation: explanation,
 		Diagnostic:  strings.Join(diagnostics, ""),
-		Time:        duration,
+		Time:        ptypes.DurationProto(duration),
 		Yaml:        yaml,
 	}, err
 }
@@ -333,7 +292,7 @@ func (p *Parser) parseYAML() []byte {
 	return []byte(strings.Join(yaml, ""))
 }
 
-func (t *Testline) String() string {
+func (t *Testline) ResultString() string {
 	str := []string{}
 	if t.Ok {
 		str = append(str, "ok ")
@@ -346,7 +305,7 @@ func (t *Testline) String() string {
 		str = append(str, " ", t.Description)
 	}
 
-	if t.Directive != None {
+	if t.Directive != Testline_NONE {
 		str = append(str, " # ", t.Directive.String())
 		if t.Explanation != "" {
 			str = append(str, " ", t.Explanation)
