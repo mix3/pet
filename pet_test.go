@@ -27,7 +27,7 @@ not ok 3 foobar # TODO not implemented yet`)
 	}
 
 	for _, t := range suite.Tests {
-		fmt.Println(t)
+		fmt.Println(t.ResultString())
 	}
 
 	// Output:
@@ -90,13 +90,13 @@ ok 3 - foobar
 	if len(suite.Tests[1].SubTests) != 3 {
 		t.Errorf("want 3\ngot %d", len(suite.Tests[0].SubTests))
 	}
-	if got, want := suite.Tests[1].SubTests[0].String(), "ok 1 - subtest1"; got != want {
+	if got, want := suite.Tests[1].SubTests[0].ResultString(), "ok 1 - subtest1"; got != want {
 		t.Errorf("want %s\ngot %s", want, got)
 	}
-	if got, want := suite.Tests[1].SubTests[1].String(), "ok 2 - subtest2 # TODO not implemented yet"; got != want {
+	if got, want := suite.Tests[1].SubTests[1].ResultString(), "ok 2 - subtest2 # TODO not implemented yet"; got != want {
 		t.Errorf("want %s\ngot %s", want, got)
 	}
-	if got, want := suite.Tests[1].SubTests[2].String(), "ok 3 - subtest3"; got != want {
+	if got, want := suite.Tests[1].SubTests[2].ResultString(), "ok 3 - subtest3"; got != want {
 		t.Errorf("want %s\ngot %s", want, got)
 	}
 	if suite.Tests[2].SubTests != nil {
@@ -138,7 +138,7 @@ ok 3 - foobar
 	if len(suite.Tests[1].SubTests) != 1 {
 		t.Errorf("want 1\ngot %d", len(suite.Tests[0].SubTests))
 	}
-	if got, want := suite.Tests[1].SubTests[0].String(), "ok 1 - subtest1"; got != want {
+	if got, want := suite.Tests[1].SubTests[0].ResultString(), "ok 1 - subtest1"; got != want {
 		t.Errorf("want %s\ngot %s", want, got)
 	}
 	if len(suite.Tests[1].SubTests[0].SubTests) != 3 {
